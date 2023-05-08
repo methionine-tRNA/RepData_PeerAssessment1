@@ -1,0 +1,93 @@
+---
+title: "Reproducible Research Project 1"
+output: md_document
+date: "2023-05-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lubridate)
+library(tidyverse)
+```
+
+Code for reading in the dataset and/or processing the data
+
+```{r}
+activity <- read.csv("activity.csv")
+```
+
+Histogram of the total number of steps taken each day
+
+```{r}
+activitySummarized <- activity %>%
+  group_by(date) %>%
+  summarize(steps = sum(steps))
+
+ggplot(activitySummarized, aes(x = ymd(date), y = steps)) +
+  geom_bar(stat = "identity") +
+  xlab("Date") +
+  ylab("Steps")
+```
+
+Mean and median number of steps taken each day
+
+```{r}
+mean(na.omit(activitySummarized$steps))
+median(na.omit(activitySummarized$steps))
+```
+
+Time series plot of the average number of steps taken
+
+```{r}
+plot(ymd(activitySummarized$date), activitySummarized$steps, type = "l", xlab = "Date", ylab = "Steps")
+```
+
+The 5-minute interval that, on average, contains the maximum number of steps
+
+```{r}
+activitySteps <- activity %>%
+  group_by(interval) %>%
+  summarize(averageSteps = mean(na.omit(steps)))
+
+activitySteps[which(activitySteps$averageSteps == max(activitySteps$averageSteps)), ]$interval
+```
+
+Code to describe and show a strategy for imputing missing data
+
+```{r}
+activityImputed <- activity
+activityImputed$steps[is.na(activityImputed$steps)] <- mean(na.omit((activity$steps)))
+```
+
+Histogram of the total number of steps taken each day after missing values are imputed
+
+```{r}
+ggplot(activityImputed, aes(x = ymd(date), y = steps)) +
+  geom_bar(stat = "identity") +
+  xlab("Date") +
+  ylab("Steps")
+```
+
+Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+```{r}
+activity$weekend <- if_else(wday(activity$date) %in% c(1, 7), "Weekend", "Weekday")
+
+activityWeekend <- group_split(activity, weekend)[[1]] %>%
+  group_by(interval) %>%
+  summarize(averageSteps = mean(na.omit(steps)))
+activityWeekend$weekend <- "Weekend"
+
+activityWeekdays <- group_split(activity, weekend)[[2]] %>%
+  group_by(interval) %>%
+  summarize(averageSteps = mean(na.omit(steps)))
+activityWeekdays$weekend <- "Weekday"
+
+activityWeek <- rbind(activityWeekend, activityWeekdays)
+
+ggplot(activityWeek, aes(x = interval, y = averageSteps)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~weekend) +
+  xlab("Interval") +
+  ylab("Steps")
+```
